@@ -1,5 +1,4 @@
-# TODO: Change the name of the org 
-org: sudkul
+org: patrickha55
 app: serverless-todo-app
 service: serverless-todo-app
 
@@ -25,7 +24,7 @@ provider:
   environment:
     TODOS_TABLE: Todos-${self:provider.stage}
     TODOS_CREATED_AT_INDEX: CreatedAtIndex
-    ATTACHMENT_S3_BUCKET: serverless-c4-todo-images-${self:provider.stage}
+    ATTACHMENT_S3_BUCKET: serverless-c4-todo-images-phatht9-2022-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
 
   logs:
@@ -56,7 +55,7 @@ functions:
           method: get
           path: todos
           cors: true
-          authorizer: Auth
+         # authorizer: Auth
 
   # TODO: Configure this function - 
   # Provide iamRoleStatements property. Decide the Actions and AWS Resource. 
@@ -69,7 +68,7 @@ functions:
           method: post
           path: todos
           cors: true
-          authorizer: Auth
+         # authorizer: Auth
           request:
             schemas:
               application/json: ${file(models/create-todo-model.json)}
@@ -103,26 +102,62 @@ functions:
 
 resources:
   Resources:
-    # Add necessary AWS resources. You will need at least the following AWS resources
-    # TODO: Fill the properties
-    # Feel free to change the names as you like. 
-    GatewayResponseDefault4XX:
+    GatewayResourceDefault4XX:
       Type: AWS::ApiGateway::GatewayResponse
       Properties:
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS,POST'"
     
     # TODO: Create a DynamoDB table with local secondary index and a composite key
     TodosTable:
       Type: AWS::DynamoDB::Table
       Properties:
-
-    # TODO: Complete the bucket properties below. 
-    # Do not forget to add the CorsConfiguration propoerty
+        TableName: '${self:provider.environment.TODOS_TABLE}'
+        AttributeDefinitions:
+          - AttributeName: todoId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+        KeySchema:
+          - AttributeName: todoId
+            KeyType: HASH
+          - AttributeName: createdAt
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+      
     AttachmentsBucket:
       Type: AWS::S3::Bucket
       Properties:
+        BucketName: '${self:provider.environment.ATTACHMENT_S3_BUCKET}'
+        CorsConfiguration:
+          CorsRules:
+            - AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD 
+              AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              MaxAge: 3000
 
-    # TODO: Complete the policy below and attach it to the bucket defined above
-    # For cross referencing the name of the bucket, use "!Ref AttachmentsBucket"
     BucketPolicy:
-      Type: AWS::S3::BucketPolicy
+      Type: 'AWS::S3::BucketPolicy'
       Properties:
+        PolicyDocument:
+          Id: MyBucketPolicy
+          Version: 2012-10-17
+          Statement:
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: '*'
+              Action: s3:GetObject
+              Resource: 'arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET'
+        Bucket: !Ref AttachmentBucket
