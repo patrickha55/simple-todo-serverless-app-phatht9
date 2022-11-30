@@ -10,7 +10,7 @@ plugins:
 provider:
   name: aws
   runtime: nodejs12.x
-  lambdaHashingVersion: '20201221'
+  lambdaHashingVersion: "20201221"
 
   stage: ${opt:stage, 'dev'}
   region: ${opt:region, 'us-east-1'}
@@ -19,7 +19,7 @@ provider:
     lambda: true
     apiGateway: true
 
-  # Use these variables in the functions and resouorces section below. For example, 
+  # Use these variables in the functions and resources section below. For example,
   # ${self:provider.environment.ATTACHMENT_S3_BUCKET}
   environment:
     TODOS_TABLE: Todos-${self:provider.stage}
@@ -39,14 +39,19 @@ provider:
             - xray:PutTelemetryRecords
             - xray:PutTraceSegments
           Resource: "*"
-
+        - Effect: Allow
+          Action:
+            - dynamodb:Scan
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:Query
+          Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}"
 
 functions:
-
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
-  # TODO: Configure this function - 
+  # TODO: Configure this function -
   # Provide iamRoleStatements property for performing Actions on DynamoDB
   GetTodos:
     handler: src/lambda/http/getTodos.handler
@@ -55,12 +60,12 @@ functions:
           method: get
           path: todos
           cors: true
-         # authorizer: Auth
+          # authorizer: Auth
 
-  # TODO: Configure this function - 
-  # Provide iamRoleStatements property. Decide the Actions and AWS Resource. 
+  # TODO: Configure this function -
+  # Provide iamRoleStatements property. Decide the Actions and AWS Resource.
   # To refer to an AWS resource defined in the "Resources" section, you can use "Resource: !GetAtt <resource-name>.Arn"
-  # To validate incoming HTTP requests, we have provided the request schemas in function definition below. 
+  # To validate incoming HTTP requests, we have provided the request schemas in function definition below.
   CreateTodo:
     handler: src/lambda/http/createTodo.handler
     events:
@@ -68,7 +73,7 @@ functions:
           method: post
           path: todos
           cors: true
-         # authorizer: Auth
+          # authorizer: Auth
           request:
             schemas:
               application/json: ${file(models/create-todo-model.json)}
@@ -112,12 +117,12 @@ resources:
           gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
           gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization'"
           gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS,POST'"
-    
+
     # TODO: Create a DynamoDB table with local secondary index and a composite key
     TodosTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: '${self:provider.environment.TODOS_TABLE}'
+        TableName: "${self:provider.environment.TODOS_TABLE}"
         AttributeDefinitions:
           - AttributeName: todoId
             AttributeType: S
@@ -129,11 +134,11 @@ resources:
           - AttributeName: createdAt
             KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
-      
+
     AttachmentsBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: '${self:provider.environment.ATTACHMENT_S3_BUCKET}'
+        BucketName: "${self:provider.environment.ATTACHMENT_S3_BUCKET}"
         CorsConfiguration:
           CorsRules:
             - AllowedMethods:
@@ -141,15 +146,15 @@ resources:
                 - PUT
                 - POST
                 - DELETE
-                - HEAD 
+                - HEAD
               AllowedOrigins:
-                - '*'
+                - "*"
               AllowedHeaders:
-                - '*'
+                - "*"
               MaxAge: 3000
 
     BucketPolicy:
-      Type: 'AWS::S3::BucketPolicy'
+      Type: "AWS::S3::BucketPolicy"
       Properties:
         PolicyDocument:
           Id: MyBucketPolicy
@@ -157,7 +162,7 @@ resources:
           Statement:
             - Sid: PublicReadForGetBucketObjects
               Effect: Allow
-              Principal: '*'
+              Principal: "*"
               Action: s3:GetObject
-              Resource: 'arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET'
+              Resource: "arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET"
         Bucket: !Ref AttachmentBucket
