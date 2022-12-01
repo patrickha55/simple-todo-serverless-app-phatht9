@@ -1,4 +1,4 @@
-import 'source-map-support/register'
+/* import 'source-map-support/register'
 
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import * as middy from 'middy'
@@ -24,3 +24,4 @@ handler
       credentials: true
     })
   )
+ */

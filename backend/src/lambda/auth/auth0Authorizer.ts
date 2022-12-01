@@ -1,28 +1,23 @@
 import { CustomAuthorizerEvent, CustomAuthorizerResult } from 'aws-lambda';
 import 'source-map-support/register';
 
-import { verify, decode } from 'jsonwebtoken';
-import { createLogger } from '../../utils/logger';
+import { verify } from 'jsonwebtoken';
 import Axios from 'axios';
-import { Jwt } from '../../auth/Jwt';
 import { JwtPayload } from '../../auth/JwtPayload';
-import { config } from '../../utils/config';
-
-const logger = createLogger('auth');
 
 const jwksUrl = 'https://dev-qcygqyyjkj6m7ese.us.auth0.com/.well-known/jwks.json';
 
 export const handler = async (
     event: CustomAuthorizerEvent
 ): Promise<CustomAuthorizerResult> => {
-    logger.info('Authorizing a user', event.authorizationToken);
+    console.info('Authorizing a user', event.authorizationToken);
     try {
         const jwtToken = await verifyToken(event.authorizationToken);
-        logger.info('User was authorized', jwtToken);
+        console.info('User was authorized', jwtToken);
 
         return generatePolicy(jwtToken.sub, '*', 'Allow');
     } catch (e) {
-        logger.error('User not authorized', { error: e.message });
+        console.error('User not authorized', { error: e.message });
 
         return generatePolicy('user', '*', 'Deny');;
     }
@@ -33,7 +28,6 @@ async function verifyToken(authHeader: string): Promise<JwtPayload> {
 
     const certInfo: string = await getCertInfo();
 
-    // You can read more about how to do this here: https://auth0.com/blog/navigating-rs256-and-jwks/
     return verify(token, certInfo, { algorithms: ['RS256'] }) as JwtPayload;
 }
 
@@ -54,11 +48,12 @@ function getToken(authHeader: string): string {
  */
 async function getCertInfo(): Promise<string> {
     try {
-        const response = await Axios.get(jwksUrl);
-        const data: string = response['data']['key'][0]['x5c'][0];
-        return certToPEM(data);
+        const response = await (await Axios.get(jwksUrl)).data;
+        const data: string = response['keys'][0]['x5c'][0];
+        const certInfo = certToPEM(data);
+        return certInfo;
     } catch (error) {
-        logger.error(`Can't fetch the Authentication certificate. Error: `, JSON.stringify(error));
+        console.error(`Can't fetch the Authentication certificate. Error: `, error);
     }
 }
 
