@@ -1,21 +1,62 @@
-import { TodoItemsAccess } from '../repositories/todoItemsAccess';
 // import { AttachmentUtils } from './attachmentUtils';
-import { TodoItem } from '../models/TodoItem';
-// import { CreateTodoRequest } from '../requests/CreateTodoRequest';
 // import { UpdateTodoRequest } from '../requests/UpdateTodoRequest';
-import { createLogger } from '../utils/logger';
-// import * as uuid from 'uuid';
 // import * as createError from 'http-errors';
-import { getUserId } from '../lambda/utils';
 import { APIGatewayProxyEvent } from 'aws-lambda';
+import { createLogger } from '../utils/logger';
+import { CreateTodoRequest } from '../dtos/requests/CreateTodoRequest';
+import { getUserId } from '../lambda/utils';
+import { Logger } from 'winston';
+import { TodoItem } from '../models/TodoItem';
+import { TodoItemDTO } from '../dtos/responses/TodoItemDTO';
+import { TodoItemsAccess } from '../repositories/todoItemsAccess';
+import * as uniqueId from 'uuid';
 
-const todoItemsAccess = new TodoItemsAccess();
-const logger = createLogger('Todo Service');
+export class TodoItemsService {
+    private readonly todoItemsAccess: TodoItemsAccess;
+    private readonly logger: Logger;
 
-export async function getAllUsersTodoItemsAsync(event: APIGatewayProxyEvent): Promise<TodoItem[]> {
-    logger.info('Get the userId');
+    constructor() {
+        this.todoItemsAccess = new TodoItemsAccess();
+        this.logger = createLogger('Todo Service');
+    }
 
-    const userId = getUserId(event);
+    /**
+     * 
+     * @param event 
+     * @returns 
+     */
+    async getAllUsersTodoItemsAsync(event: APIGatewayProxyEvent): Promise<TodoItemDTO[]> {
+        this.logger.info('Get the userId');
 
-    return await todoItemsAccess.getAllTodoItems(userId);
+        const userId = getUserId(event);
+
+        const todoItems = await this.todoItemsAccess.getAllTodoItems(userId);
+
+        return todoItems as TodoItemDTO[];
+    }
+
+    async createATodo(event: APIGatewayProxyEvent): Promise<TodoItemDTO> {
+        this.logger.info('Create a todo.');
+
+        const userId = getUserId(event);
+
+        const parsedBody: CreateTodoRequest = JSON.parse(event.body);
+
+        const todoId = uniqueId.v4();
+
+        const createdAt = new Date().toISOString();
+
+        const newTodo: TodoItem = {
+            todoId,
+            userId,
+            createdAt,
+            attachmentUrl: '',
+            done: false,
+            ...parsedBody
+        };
+
+        await this.todoItemsAccess.createTodo(newTodo);
+
+        return newTodo as TodoItemDTO;
+    }
 }

@@ -5,7 +5,6 @@ import { createLogger } from '../utils/logger';
 import { TodoItem } from '../models/TodoItem';
 // import { TodoUpdate } from '../models/TodoUpdate';
 import { config } from '../utils/config';
-import { CreateTodoRequest } from '../requests/CreateTodoRequest';
 
 // const XAWS = AWSXRay.captureAWS(AWS);
 
@@ -49,8 +48,14 @@ export class TodoItemsAccess {
      * @param newTodo Task and due date.
      * @returns A new todo item.
      */
-    createTodo = async (newTodo: CreateTodoRequest): Promise<TodoItem> => {
-        logger.info(JSON.stringify(newTodo));
-        return undefined;
+    createTodo = async (newTodo: TodoItem): Promise<void> => {
+        try {
+            await this.docClient.put({
+                TableName: this.todosTable,
+                Item: newTodo
+            }).promise();
+        } catch (error) {
+            console.error('Something went wrong. Error: ', error);
+        }
     };
 }

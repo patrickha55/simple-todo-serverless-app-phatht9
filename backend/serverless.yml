@@ -6,6 +6,7 @@ plugins:
   - serverless-webpack
   - serverless-iam-roles-per-function
   - serverless-plugin-tracing
+  - serverless-reqvalidator-plugin
 
 provider:
   name: aws
@@ -36,6 +37,21 @@ provider:
         - xray:PutTraceSegments
       Resource: "*"
 
+custom:
+  documentation:
+    api:
+      info:
+        version: v1.0.0
+        title: Todo Api
+        description: An API for managing todo items
+    models:
+      - name: CreateTodoRequest
+        contentType: application/json
+        schema: ${file(models/create-todo-model.json)}
+      - name: UpdateTodoRequest
+        contentType: application/json
+        schema: ${file(models/update-todo-model.json)}
+
 functions:
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
@@ -60,21 +76,26 @@ functions:
           - dynamodb:Query
         Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_CREATED_AT_INDEX}"
 
-  # # TODO: Configure this function -
-  # # Provide iamRoleStatements property. Decide the Actions and AWS Resource.
-  # # To refer to an AWS resource defined in the "Resources" section, you can use "Resource: !GetAtt <resource-name>.Arn"
-  # # To validate incoming HTTP requests, we have provided the request schemas in function definition below.
-  # CreateTodo:
-  #   handler: src/lambda/http/createTodo.handler
-  #   events:
-  #     - http:
-  #         method: post
-  #         path: todos
-  #         cors: true
-  #         # authorizer: Auth
-  #         request:
-  #           schemas:
-  #             application/json: ${file(models/create-todo-model.json)}
+  CreateTodo:
+    handler: src/lambda/http/createTodo.handler
+    events:
+      - http:
+          method: post
+          path: todos
+          cors: true
+          authorizer:
+            name: Auth
+          reqValidatorName: RequestBodyValidator
+          documentation:
+            summary: Create a new todo item
+            description: Create a new todo item
+            requestModels:
+              "application/json": CreateTodoRequest
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "dynamodb:PutItem"
+        Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}"
 
   # # TODO: Configure this function
   # # Provide property for setting up CORS, Authorizer, iamRoleStatements, and request schemas
@@ -116,7 +137,15 @@ resources:
           gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization'"
           gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS,POST'"
 
-    # TODO: Create a DynamoDB table with local secondary index and a composite key
+    RequestBodyValidator:
+      Type: AWS::ApiGateway::RequestValidator
+      Properties:
+        RestApiId:
+          Ref: ApiGatewayRestApi
+        Name: request-body-validator
+        ValidateRequestBody: true
+        ValidateRequestParameters: false
+
     TodosTable:
       Type: AWS::DynamoDB::Table
       Properties:
