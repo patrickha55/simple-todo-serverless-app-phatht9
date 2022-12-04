@@ -1,28 +1,57 @@
-/* import 'source-map-support/register'
+import 'source-map-support/register';
 
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
-import * as middy from 'middy'
-import { cors, httpErrorHandler } from 'middy/middlewares'
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import * as middy from 'middy';
+import { cors, httpErrorHandler } from 'middy/middlewares';
+import { TodoItemsService } from '../../services/todoItems';
 
-import { updateTodo } from '../../businessLogic/todos'
-import { UpdateTodoRequest } from '../../requests/UpdateTodoRequest'
-import { getUserId } from '../utils'
+const todoService = new TodoItemsService();
 
 export const handler = middy(
   async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-    const todoId = event.pathParameters.todoId
-    const updatedTodo: UpdateTodoRequest = JSON.parse(event.body)
-    // TODO: Update a TODO item with the provided id using values in the "updatedTodo" object
+    if (!event.body) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: 'Missing required fields.'
+        })
+      };
+    }
 
+    if (!event.pathParameters.todoId) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          error: 'Missing required todoId.'
+        })
+      };
+    }
 
-    return undefined
-)
+    const result = await todoService.updateATodo(event);
+
+    if (result) {
+      return {
+        statusCode: 204,
+        body: JSON.stringify({
+          status: 'Updated successfully'
+        })
+      };
+    }
+
+    return {
+      statusCode: 500,
+      body: JSON.stringify({
+        status: 'Something went wrong'
+      })
+    };
+  }
+);
 
 handler
   .use(httpErrorHandler())
   .use(
     cors({
+      origin: '*',
       credentials: true
     })
-  )
- */
+  );

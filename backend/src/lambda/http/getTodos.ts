@@ -15,9 +15,6 @@ export const handler = middy(
 
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
       body: JSON.stringify({
         items: todoItems
       })
@@ -27,6 +24,7 @@ export const handler = middy(
 
 handler.use(
   cors({
+    origin: '*',
     credentials: true
   })
 );
