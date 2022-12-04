@@ -107,4 +107,45 @@ export class TodoItemsAccess {
             console.error('Something went wrong. Error: ', error);
         }
     };
+
+    deleteTodo = async (todoId: string, userId: string): Promise<boolean> => {
+        try {
+            const result = await this.docClient.delete({
+                TableName: this.todosTable,
+                Key: {
+                    todoId,
+                    userId
+                }
+            }).promise();
+
+            if (result.$response.error) {
+                console.log('Can\'t delete a todo item. Error: ', JSON.stringify(result.$response.error));
+                return false;
+            }
+
+            return true;
+        } catch (error) {
+            console.log('Something went wrong', error);
+        }
+    };
+
+    /**
+     * Check to see if a todo item exists.
+     * @param todoId ID of a todo item.
+     * @returns True if a todo item exist.
+     */
+    todoExists = async (todoId: string): Promise<boolean> => {
+        try {
+            const result = await this.docClient.get({
+                TableName: this.todosTable,
+                Key: {
+                    todoId
+                }
+            }).promise();
+
+            return !!result.Item;
+        } catch (error) {
+            console.log('Something went wrong', error);
+        }
+    };
 }

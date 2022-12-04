@@ -79,8 +79,16 @@ export class TodoItemsService {
         const userId: string = getUserId(event);
 
         console.log('todoId and userId: ', todoId, userId);
+
         if (!todoId || !userId) {
             throw new Error('Invalid todoId or userId');
+        }
+
+        const existing = await this.todoItemsAccess.todoExists(todoId);
+
+        if (!existing) {
+            console.log(`Todo with an id ${todoId} doesn't exists.`);
+            return false;
         }
 
         const todo: UpdateTodoRequest = JSON.parse(event.body);
@@ -88,5 +96,19 @@ export class TodoItemsService {
         console.log('Updated todo attributes', JSON.stringify(todo));
 
         return await this.todoItemsAccess.updateTodo(todoId, userId, todo);;
+    }
+
+    /**
+     * Delete an existing todo item.
+     * @param event An event
+     * @returns True if delete successfully, else false.
+     */
+    async deleteATodo(todoId: string, userId: string): Promise<boolean> {
+        return await this.todoItemsAccess.deleteTodo(todoId, userId);
+    }
+
+    /**Check to see if a todo item exists. */
+    async IsTodoExists(todoId: string): Promise<boolean> {
+        return await this.todoItemsAccess.todoExists(todoId);
     }
 }
