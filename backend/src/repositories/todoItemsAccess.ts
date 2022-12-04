@@ -5,6 +5,7 @@ import { createLogger } from '../utils/logger';
 import { TodoItem } from '../models/TodoItem';
 // import { TodoUpdate } from '../models/TodoUpdate';
 import { config } from '../utils/config';
+import { UpdateTodoRequest } from '../dtos/requests/UpdateTodoRequest';
 
 // const XAWS = AWSXRay.captureAWS(AWS);
 
@@ -54,6 +55,54 @@ export class TodoItemsAccess {
                 TableName: this.todosTable,
                 Item: newTodo
             }).promise();
+        } catch (error) {
+            console.error('Something went wrong. Error: ', error);
+        }
+    };
+
+    /**
+     * Update an existing todo.
+     * @param todoId ID of a to do 
+     * @param userId ID of an user
+     * @param todo Attributes for updating a to do
+     * @returns True if update successfully, else false.
+     */
+    updateTodo = async (todoId: string, userId: string, todo: UpdateTodoRequest): Promise<boolean> => {
+        try {
+            const update = {
+                TableName: this.todosTable,
+                Key: {
+                    todoId: todoId,
+                    userId: userId
+                },
+                UpdateExpression: "SET ",
+                ExpressionAttributeNames: {},
+                ExpressionAttributeValues: {}
+            };
+
+            const updateExpression = [];
+
+            for (const key in todo) {
+                if (Object.prototype.hasOwnProperty.call(todo, key)) {
+                    const todoAttribute = todo[key];
+                    updateExpression.push(`#${key} = :${key}`);
+                    update.ExpressionAttributeNames[`#${key}`] = key;
+                    update.ExpressionAttributeValues[`:${key}`] = todoAttribute;
+                }
+            }
+
+            update.UpdateExpression += updateExpression.join(", ");
+
+            const result = await this.docClient.update({
+                ...update,
+                ReturnValues: "UPDATED_NEW"
+            }).promise();
+
+            if (result.$response.error) {
+                console.log('Error calling dynamodb update: ', JSON.stringify(result.$response.error));
+                return false;
+            }
+            return true;
         } catch (error) {
             console.error('Something went wrong. Error: ', error);
         }

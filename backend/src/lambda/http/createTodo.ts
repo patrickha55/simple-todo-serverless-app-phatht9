@@ -11,9 +11,6 @@ export const handler = middy(
     if (!event.body) {
       return {
         statusCode: 400,
-        headers: {
-          'Access-Control-Allow-Origin': '*'
-        },
         body: JSON.stringify({
           error: 'Missing required fields.'
         })
@@ -22,11 +19,10 @@ export const handler = middy(
 
     const newTodoDTO = await todoService.createATodo(event);
 
+    console.log('newTodoDTO', JSON.stringify(newTodoDTO));
+
     return {
       statusCode: 201,
-      headers: {
-        'Access-Control-Allow-Origin': '*'
-      },
       body: JSON.stringify({
         item: newTodoDTO
       })
@@ -35,6 +31,7 @@ export const handler = middy(
 
 handler.use(
   cors({
+    origin: '*',
     credentials: true
   })
 );
