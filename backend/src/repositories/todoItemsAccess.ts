@@ -3,13 +3,11 @@ import * as AWS from 'aws-sdk';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 import { createLogger } from '../utils/logger';
 import { TodoItem } from '../models/TodoItem';
-// import { TodoUpdate } from '../models/TodoUpdate';
 import { config } from '../utils/config';
 import { UpdateTodoRequest } from '../dtos/requests/UpdateTodoRequest';
+import { Logger } from 'winston';
 
 // const XAWS = AWSXRay.captureAWS(AWS);
-
-const logger = createLogger('TodosAccess');
 
 /**
  * Data access class.
@@ -17,10 +15,14 @@ const logger = createLogger('TodosAccess');
 export class TodoItemsAccess {
     private readonly docClient: DocumentClient;
     private readonly todosTable: string;
+    private readonly attachmentsBucket: string;
+    private readonly logger: Logger;
 
     constructor() {
         this.docClient = new AWS.DynamoDB.DocumentClient();
         this.todosTable = config.TODOS_TABLE;
+        this.attachmentsBucket = config.ATTACHMENT_S3_BUCKET;
+        this.logger = createLogger('TodosAccess');
     }
 
     /**
@@ -28,8 +30,8 @@ export class TodoItemsAccess {
      * @param userId Id of an user
      * @returns A list of todo items
      */
-    getAllTodoItems = async (userId: string): Promise<TodoItem[]> => {
-        logger.info('Begin getting all todo items');
+    getAllTodoItemsAsync = async (userId: string): Promise<TodoItem[]> => {
+        this.logger.info('Begin getting all todo items');
 
         const result = await this.docClient.query({
             TableName: this.todosTable,
@@ -49,7 +51,7 @@ export class TodoItemsAccess {
      * @param newTodo Task and due date.
      * @returns A new todo item.
      */
-    createTodo = async (newTodo: TodoItem): Promise<void> => {
+    createTodoAsync = async (newTodo: TodoItem): Promise<void> => {
         try {
             await this.docClient.put({
                 TableName: this.todosTable,
@@ -67,7 +69,7 @@ export class TodoItemsAccess {
      * @param todo Attributes for updating a to do
      * @returns True if update successfully, else false.
      */
-    updateTodo = async (todoId: string, userId: string, todo: UpdateTodoRequest): Promise<boolean> => {
+    updateTodoAsync = async (todoId: string, userId: string, todo: UpdateTodoRequest): Promise<boolean> => {
         try {
             const update = {
                 TableName: this.todosTable,
@@ -108,7 +110,40 @@ export class TodoItemsAccess {
         }
     };
 
-    deleteTodo = async (todoId: string, userId: string): Promise<boolean> => {
+    /** Add an attachment url to an existing todo item. */
+    updateTodoAttachmentAsync = async (todoId: string, userId: string, s3key: string): Promise<boolean> => {
+        this.logger.info('Start updating todo item with the attachment url.');
+
+
+        const result = await this.docClient.update({
+            TableName: this.todosTable,
+            Key: {
+                todoId,
+                userId
+            },
+            UpdateExpression: 'SET #attachmentUrl = :attachmentUrl',
+            ExpressionAttributeNames: { '#attachmentUrl': 'attachmentUrl' },
+            ExpressionAttributeValues: {
+                ':attachmentUrl': `https://${this.attachmentsBucket}.s3.amazonaws.com/${s3key}`
+            },
+            ReturnValues: "UPDATED_NEW"
+        }).promise();
+
+        if (result.$response.error) {
+            this.logger.error('Fail to update a todo attachment.', result.$response.error);
+            return false;
+        }
+
+        return true;
+    };
+
+    /**
+     * Delete a todo item by its id and userId.
+     * @param todoId ID of a todo item.
+     * @param userId ID of an user.
+     * @returns True if deleted successfully, else false.
+     */
+    deleteTodoAsync = async (todoId: string, userId: string): Promise<boolean> => {
         try {
             const result = await this.docClient.delete({
                 TableName: this.todosTable,
@@ -134,7 +169,7 @@ export class TodoItemsAccess {
      * @param todoId ID of a todo item.
      * @returns True if a todo item exist.
      */
-    todoExists = async (todoId: string): Promise<boolean> => {
+    todoExistsAsync = async (todoId: string): Promise<boolean> => {
         try {
             const result = await this.docClient.get({
                 TableName: this.todosTable,

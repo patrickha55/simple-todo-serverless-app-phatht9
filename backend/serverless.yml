@@ -56,7 +56,6 @@ functions:
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
-  # Provide iamRoleStatements property for performing Actions on DynamoDB
   GetTodos:
     handler: src/lambda/http/getTodos.handler
     events:
@@ -118,6 +117,21 @@ functions:
           - "dynamodb:UpdateItem"
         Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}"
 
+  UpdateTodoAttachment:
+    handler: src/lambda/http/updateTodoAttachment.handler
+    events:
+      - http:
+          method: put
+          path: todos/{todoId}/attachment
+          cors: true
+          authorizer:
+            name: Auth
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "dynamodb:UpdateItem"
+        Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}"
+
   DeleteTodo:
     handler: src/lambda/http/deleteTodo.handler
     events:
@@ -130,17 +144,25 @@ functions:
     iamRoleStatements:
       - Effect: "Allow"
         Action:
+          - "dynamodb:GetItem"
           - "dynamodb:DeleteItem"
         Resource: "arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}"
 
-  # # TODO: Configure this function
-  # # Provide property for setting up CORS, Authorizer, iamRoleStatements
-  # GenerateUploadUrl:
-  #   handler: src/lambda/http/generateUploadUrl.handler
-  #   events:
-  #     - http:
-  #         method: post
-  #         path: todos/{todoId}/attachment
+  GenerateUploadUrl:
+    handler: src/lambda/http/generateUploadUrl.handler
+    events:
+      - http:
+          method: post
+          path: todos/{todoId}/attachment
+          cors: true
+          authorizer:
+            name: Auth
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+          - "s3:PutObject"
+          - "s3:GetObject"
+        Resource: "arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*"
 
 resources:
   Resources:
@@ -191,34 +213,34 @@ resources:
             Projection:
               ProjectionType: ALL
 
-    # AttachmentsBucket:
-    #   Type: AWS::S3::Bucket
-    #   Properties:
-    #     BucketName: "${self:provider.environment.ATTACHMENT_S3_BUCKET}"
-    #     CorsConfiguration:
-    #       CorsRules:
-    #         - AllowedMethods:
-    #             - GET
-    #             - PUT
-    #             - POST
-    #             - DELETE
-    #             - HEAD
-    #           AllowedOrigins:
-    #             - "*"
-    #           AllowedHeaders:
-    #             - "*"
-    #           MaxAge: 3000
+    AttachmentsBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: "${self:provider.environment.ATTACHMENT_S3_BUCKET}"
+        CorsConfiguration:
+          CorsRules:
+            - AllowedOrigins:
+                - "*"
+              AllowedHeaders:
+                - "*"
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
 
-    # BucketPolicy:
-    #   Type: "AWS::S3::BucketPolicy"
-    #   Properties:
-    #     PolicyDocument:
-    #       Id: MyBucketPolicy
-    #       Version: 2012-10-17
-    #       Statement:
-    #         - Sid: PublicReadForGetBucketObjects
-    #           Effect: Allow
-    #           Principal: "*"
-    #           Action: s3:GetObject
-    #           Resource: "arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*"
-    #     Bucket: !Ref AttachmentBucket
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: MyBucketPolicy
+          Version: "2012-10-17"
+          Statement:
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: "*"
+              Action: "s3:GetObject"
+              Resource: "arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*"
+        Bucket: !Ref AttachmentsBucket

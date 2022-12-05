@@ -27,7 +27,7 @@ export const handler = middy(
       };
     }
 
-    const result = await todoService.updateATodo(event);
+    const result = await todoService.updateATodoAsync(event);
 
     if (result) {
       return {

@@ -30,9 +30,20 @@ export class TodoItemsService {
 
         const userId = getUserId(event);
 
-        const todoItems = await this.todoItemsAccess.getAllTodoItems(userId);
+        const todoItems = await this.todoItemsAccess.getAllTodoItemsAsync(userId);
 
-        return todoItems as TodoItemDTO[];
+        const todoItemDTOs: TodoItemDTO[] = todoItems.map(item => {
+            return {
+                todoId: item.todoId,
+                createdAt: item.createdAt,
+                attachmentUrl: item.attachmentUrl,
+                done: item.done,
+                dueDate: item.dueDate,
+                name: item.name
+            };
+        });
+
+        return todoItemDTOs;
     }
 
     /**
@@ -40,7 +51,7 @@ export class TodoItemsService {
      * @param event An event.
      * @returns A new todo item.
      */
-    async createATodo(event: APIGatewayProxyEvent): Promise<TodoItemDTO> {
+    async createATodoAsync(event: APIGatewayProxyEvent): Promise<TodoItemDTO> {
         this.logger.info('Create a todo.');
 
         const userId = getUserId(event);
@@ -60,10 +71,15 @@ export class TodoItemsService {
             ...parsedBody
         };
 
-        await this.todoItemsAccess.createTodo(newTodo);
+        await this.todoItemsAccess.createTodoAsync(newTodo);
 
         const newTodoDTO: TodoItemDTO = {
-            ...newTodo
+            todoId: newTodo.todoId,
+            createdAt: newTodo.createdAt,
+            attachmentUrl: newTodo.attachmentUrl,
+            done: newTodo.done,
+            dueDate: newTodo.dueDate,
+            name: newTodo.name
         };
 
         return newTodoDTO;
@@ -74,7 +90,7 @@ export class TodoItemsService {
      * @param event An event
      * @returns True if update successfully, else false.
      */
-    async updateATodo(event: APIGatewayProxyEvent): Promise<boolean> {
+    async updateATodoAsync(event: APIGatewayProxyEvent): Promise<boolean> {
         const todoId: string = event.pathParameters.todoId;
         const userId: string = getUserId(event);
 
@@ -84,7 +100,7 @@ export class TodoItemsService {
             throw new Error('Invalid todoId or userId');
         }
 
-        const existing = await this.todoItemsAccess.todoExists(todoId);
+        const existing = await this.todoItemsAccess.todoExistsAsync(todoId);
 
         if (!existing) {
             console.log(`Todo with an id ${todoId} doesn't exists.`);
@@ -95,7 +111,11 @@ export class TodoItemsService {
 
         console.log('Updated todo attributes', JSON.stringify(todo));
 
-        return await this.todoItemsAccess.updateTodo(todoId, userId, todo);;
+        return await this.todoItemsAccess.updateTodoAsync(todoId, userId, todo);;
+    }
+
+    async updateATodoAttachment(todoId: string, userId: string, s3Key: string): Promise<boolean> {
+        return this.todoItemsAccess.updateTodoAttachmentAsync(todoId, userId, s3Key);
     }
 
     /**
@@ -103,12 +123,12 @@ export class TodoItemsService {
      * @param event An event
      * @returns True if delete successfully, else false.
      */
-    async deleteATodo(todoId: string, userId: string): Promise<boolean> {
-        return await this.todoItemsAccess.deleteTodo(todoId, userId);
+    async deleteATodoAsync(todoId: string, userId: string): Promise<boolean> {
+        return await this.todoItemsAccess.deleteTodoAsync(todoId, userId);
     }
 
     /**Check to see if a todo item exists. */
-    async IsTodoExists(todoId: string): Promise<boolean> {
-        return await this.todoItemsAccess.todoExists(todoId);
+    async IsTodoExistsAsync(todoId: string): Promise<boolean> {
+        return await this.todoItemsAccess.todoExistsAsync(todoId);
     }
 }

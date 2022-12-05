@@ -43,6 +43,25 @@ export async function patchTodo(
   });
 }
 
+export async function patchTodoAttachment(
+  idToken: string,
+  todoId: string,
+  s3Key: string
+): Promise<void> {
+  await Axios.put(
+    `${apiEndpoint}/todos/${todoId}/attachment`,
+    {
+      s3Key
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${idToken}`,
+      },
+    }
+  );
+}
+
 export async function deleteTodo(
   idToken: string,
   todoId: string
