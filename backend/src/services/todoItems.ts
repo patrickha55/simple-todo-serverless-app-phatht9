@@ -100,7 +100,7 @@ export class TodoItemsService {
             throw new Error('Invalid todoId or userId');
         }
 
-        const existing = await this.todoItemsAccess.todoExistsAsync(todoId);
+        const existing = await this.todoItemsAccess.todoExistsAsync(todoId, userId);
 
         if (!existing) {
             console.log(`Todo with an id ${todoId} doesn't exists.`);
@@ -128,7 +128,8 @@ export class TodoItemsService {
     }
 
     /**Check to see if a todo item exists. */
-    async IsTodoExistsAsync(todoId: string): Promise<boolean> {
-        return await this.todoItemsAccess.todoExistsAsync(todoId);
+    async IsTodoExistsAsync(todoId: string, userId: string): Promise<boolean> {
+
+        return await this.todoItemsAccess.todoExistsAsync(todoId, userId);
     }
 }

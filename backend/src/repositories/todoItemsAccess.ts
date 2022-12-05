@@ -169,11 +169,12 @@ export class TodoItemsAccess {
      * @param todoId ID of a todo item.
      * @returns True if a todo item exist.
      */
-    todoExistsAsync = async (todoId: string): Promise<boolean> => {
+    todoExistsAsync = async (todoId: string, userId: string): Promise<boolean> => {
         try {
             const result = await this.docClient.get({
                 TableName: this.todosTable,
                 Key: {
+                    userId,
                     todoId
                 }
             }).promise();

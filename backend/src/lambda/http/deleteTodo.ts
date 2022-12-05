@@ -30,7 +30,7 @@ export const handler = middy(
       };
     }
 
-    const IsTodoExists = await todoService.IsTodoExistsAsync(todoId);
+    const IsTodoExists = await todoService.IsTodoExistsAsync(todoId, userId);
 
     if (!IsTodoExists) {
       return {
