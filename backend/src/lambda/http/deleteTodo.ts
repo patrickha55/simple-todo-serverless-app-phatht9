@@ -30,7 +30,7 @@ export const handler = middy(
       };
     }
 
-    const IsTodoExists = await todoService.IsTodoExists(todoId);
+    const IsTodoExists = await todoService.IsTodoExistsAsync(todoId, userId);
 
     if (!IsTodoExists) {
       return {
@@ -41,7 +41,7 @@ export const handler = middy(
       };
     }
 
-    const result = await todoService.deleteATodo(todoId, userId);
+    const result = await todoService.deleteATodoAsync(todoId, userId);
 
     if (!result) {
       return {

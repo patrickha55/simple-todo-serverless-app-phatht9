@@ -17,7 +17,7 @@ export const handler = middy(
       };
     }
 
-    const newTodoDTO = await todoService.createATodo(event);
+    const newTodoDTO = await todoService.createATodoAsync(event);
 
     console.log('newTodoDTO', JSON.stringify(newTodoDTO));
 
