@@ -2,13 +2,15 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import * as middy from "middy";
 import { cors, httpErrorHandler } from "middy/middlewares";
 import { TodoItemsService } from "../../services/todoItems";
+import { createLogger } from "../../utils/logger";
 import { getUserId } from "../utils";
 
 const todoService = new TodoItemsService();
+const logger = createLogger('Update a todo item attachment');
 
 export const handler = middy(
     async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-        console.info('Starting update todo attachment');
+        logger.info('Starting update todo attachment');
 
         const todoId = event.pathParameters.todoId;
 
@@ -25,7 +27,11 @@ export const handler = middy(
 
         const userId: string = getUserId(event);
 
-        console.log('All params: ', todoId, userId, JSON.stringify(payload));
+        logger.info('All params: ', {
+            todoId,
+            userId,
+            payload
+        });
 
         const result = await todoService.updateATodoAttachment(todoId, userId, payload.s3Key);
 
