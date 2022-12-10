@@ -94,7 +94,9 @@ export class TodoItemsService {
         const todoId: string = event.pathParameters.todoId;
         const userId: string = getUserId(event);
 
-        console.log('todoId and userId: ', todoId, userId);
+        this.logger.info('todoId and userId: ', {
+            todoId, userId
+        });
 
         if (!todoId || !userId) {
             throw new Error('Invalid todoId or userId');
@@ -103,13 +105,15 @@ export class TodoItemsService {
         const existing = await this.todoItemsAccess.todoExistsAsync(todoId, userId);
 
         if (!existing) {
-            console.log(`Todo with an id ${todoId} doesn't exists.`);
+            this.logger.info(`Todo with an id ${todoId} doesn't exists.`);
             return false;
         }
 
         const todo: UpdateTodoRequest = JSON.parse(event.body);
 
-        console.log('Updated todo attributes', JSON.stringify(todo));
+        this.logger.info('Updated todo attributes', {
+            todo
+        });
 
         return await this.todoItemsAccess.updateTodoAsync(todoId, userId, todo);;
     }

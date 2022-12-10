@@ -1,5 +1,5 @@
 import * as AWS from 'aws-sdk';
-// import * as AWSXRay from 'aws-xray-sdk';
+import * as AWSXRay from 'aws-xray-sdk';
 import { DocumentClient } from 'aws-sdk/clients/dynamodb';
 import { createLogger } from '../utils/logger';
 import { TodoItem } from '../models/TodoItem';
@@ -17,12 +17,16 @@ export class TodoItemsAccess {
     private readonly todosTable: string;
     private readonly attachmentsBucket: string;
     private readonly logger: Logger;
+    private readonly XAWS: AWSXRay;
 
     constructor() {
-        this.docClient = new AWS.DynamoDB.DocumentClient();
+        this.XAWS = AWSXRay.captureAWS(AWS);
+        this.docClient = new this.XAWS.DynamoDB.DocumentClient();
         this.todosTable = config.TODOS_TABLE;
         this.attachmentsBucket = config.ATTACHMENT_S3_BUCKET;
         this.logger = createLogger('TodosAccess');
+
+        this.logger.info('Resources created.');
     }
 
     /**
@@ -43,6 +47,10 @@ export class TodoItemsAccess {
 
         const items = result.Items;
 
+        this.logger.info('Got all todo items.', {
+            items
+        });
+
         return items as TodoItem[];
     };
 
@@ -58,7 +66,9 @@ export class TodoItemsAccess {
                 Item: newTodo
             }).promise();
         } catch (error) {
-            console.error('Something went wrong. Error: ', error);
+            this.logger.error('Something went wrong. Error: ', {
+                error
+            });
         }
     };
 
@@ -95,18 +105,27 @@ export class TodoItemsAccess {
 
             update.UpdateExpression += updateExpression.join(", ");
 
+            this.logger.info('Update Expression.', {
+                expression: update.UpdateExpression
+            });
+
             const result = await this.docClient.update({
                 ...update,
                 ReturnValues: "UPDATED_NEW"
             }).promise();
 
             if (result.$response.error) {
-                console.log('Error calling dynamodb update: ', JSON.stringify(result.$response.error));
+                this.logger.error('Error calling dynamodb update: ', {
+                    error: result.$response.error
+                });
                 return false;
             }
+
             return true;
         } catch (error) {
-            console.error('Something went wrong. Error: ', error);
+            this.logger.error('Something went wrong. Error: ', {
+                error
+            });
         }
     };
 
@@ -114,8 +133,7 @@ export class TodoItemsAccess {
     updateTodoAttachmentAsync = async (todoId: string, userId: string, s3key: string): Promise<boolean> => {
         this.logger.info('Start updating todo item with the attachment url.');
 
-
-        const result = await this.docClient.update({
+        const update = {
             TableName: this.todosTable,
             Key: {
                 todoId,
@@ -127,10 +145,17 @@ export class TodoItemsAccess {
                 ':attachmentUrl': `https://${this.attachmentsBucket}.s3.amazonaws.com/${s3key}`
             },
             ReturnValues: "UPDATED_NEW"
+        };
+
+        const result = await this.docClient.update({
+            ...update
         }).promise();
 
         if (result.$response.error) {
-            this.logger.error('Fail to update a todo attachment.', result.$response.error);
+            this.logger.error('Fail to update a todo attachment.', {
+                error: result.$response.error
+            });
+
             return false;
         }
 
@@ -154,13 +179,17 @@ export class TodoItemsAccess {
             }).promise();
 
             if (result.$response.error) {
-                console.log('Can\'t delete a todo item. Error: ', JSON.stringify(result.$response.error));
+                this.logger.error('Can\'t delete a todo item. Error: ', {
+                    error: JSON.stringify(result.$response.error)
+                });
                 return false;
             }
 
             return true;
         } catch (error) {
-            console.log('Something went wrong', error);
+            this.logger.error('Something went wrong', {
+                error
+            });
         }
     };
 
@@ -171,6 +200,8 @@ export class TodoItemsAccess {
      */
     todoExistsAsync = async (todoId: string, userId: string): Promise<boolean> => {
         try {
+            this.logger.info('Checking for a todo item existence.');
+
             const result = await this.docClient.get({
                 TableName: this.todosTable,
                 Key: {
@@ -181,7 +212,9 @@ export class TodoItemsAccess {
 
             return !!result.Item;
         } catch (error) {
-            console.log('Something went wrong', error);
+            this.logger.error('Something went wrong', {
+                error
+            });
         }
     };
 }
